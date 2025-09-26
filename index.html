@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<title>🦠 مكافحة العدوى</title>
+<style>
+  body { font-family: Arial, sans-serif; text-align: center; background: #f0f8ff; margin:0; padding:0; }
+  #gameScreen,#dressScreen,#virusScreen,#endScreen { display:none; }
+  .character { font-size:100px; }
+  .ppe-icons button { font-size:30px; margin:5px; cursor:pointer; }
+  #equippedVisuals { display: flex; gap: 10px; justify-content: center; position: absolute; top: -50px; left: 50%; transform: translateX(-50%); font-size: 40px; }
+  #playArea { position:relative; width:90%; height:300px; margin:20px auto; border:2px solid #ccc; overflow:hidden; background:#fff; }
+  .virus { position:absolute; font-size:40px; cursor:pointer; user-select:none; }
+  #hud { margin-top:15px; font-size:20px; }
+  #characterPreview { font-size:80px; margin:10px; }
+</style>
+</head>
+<body>
+
+<!-- شاشة البداية -->
+<div id="gameScreen">
+  <h1>🦠 مكافحة العدوى</h1>
+  <input type="text" id="playerName" placeholder="اكتب اسمك">
+  <div>
+    <button onclick="chooseCharacter('👨🏻‍⚕️')">👨🏻‍⚕️</button>
+    <button onclick="chooseCharacter('👩🏻‍⚕️')">👩🏻‍⚕️</button>
+  </div>
+  <div id="characterPreview"></div>
+  <button onclick="startDressUp()">ابدأ</button>
+</div>
+
+<!-- شاشة التلبيس -->
+<div id="dressScreen">
+  <h2>البس معدات الوقاية</h2>
+  <div id="characterContainer" style="position: relative; display: inline-block;">
+    <div id="characterDisplay" class="character">🧍🏻</div>
+    <div id="equippedVisuals"></div>
+  </div>
+  <div class="ppe-icons">
+    <button onclick="equipVisual('😷')">كمامة</button>
+    <button onclick="equipVisual('🧤')">قفازات</button>
+    <button onclick="equipVisual('🥼')">معطف</button>
+    <button onclick="equipVisual('👓')">نظارات</button>
+  </div>
+</div>
+
+<!-- شاشة الفيروسات -->
+<div id="virusScreen">
+  <h2 id="welcomeText"></h2>
+  <div id="hud">النقاط: 0 | الوقت: 60</div>
+  <div id="playArea"></div>
+</div>
+
+<!-- شاشة النهاية -->
+<div id="endScreen">
+  <h2 id="endMessage"></h2>
+  <button id="restartBtn">🔄 إعادة اللعب</button>
+  <button onclick="window.location.reload()">❌ خروج</button>
+</div>
+
+<script>
+let playerName="", character="", equippedItems=[];
+const requiredItems=["😷","🧤","🥼","👓"];
+let score=0, timeLeft=60, timerInterval, virusInterval;
+let level = 1;
+
+const gameScreen=document.getElementById("gameScreen");
+const dressScreen=document.getElementById("dressScreen");
+const virusScreen=document.getElementById("virusScreen");
+const endScreen=document.getElementById("endScreen");
+const characterDisplay=document.getElementById("characterDisplay");
+const equippedVisuals=document.getElementById("equippedVisuals");
+const hud=document.getElementById("hud");
+const playArea=document.getElementById("playArea");
+const characterPreview = document.getElementById("characterPreview");
+
+gameScreen.style.display="block";
+
+function chooseCharacter(c){
+  character = c;
+  characterPreview.textContent = c;
+}
+
+function startDressUp(){
+  playerName=document.getElementById("playerName").value.trim();
+  if(playerName===""){ alert("⚠️ اكتب اسمك قبل المتابعة"); return; }
+  if(character===""){ alert("⚠️ اختر شخصية قبل المتابعة"); return; }
+  gameScreen.style.display="none";
+  dressScreen.style.display="block";
+  characterDisplay.textContent=character==="👨🏻‍⚕️"?"🧍🏻‍♂️":"🧍🏻";
+  equippedVisuals.innerHTML = "";
+}
+
+function equipVisual(item){
+  if(!equippedItems.includes(item)){
+    equippedItems.push(item);
+    let itemDiv = document.createElement("div");
+    itemDiv.textContent = item;
+    equippedVisuals.appendChild(itemDiv);
+  }
+
+  let allEquipped = requiredItems.every(req => equippedItems.includes(req));
+  if(allEquipped){
+    startVirusStage();
+  }
+}
+
+function startVirusStage(){
+  dressScreen.style.display="none";
+  virusScreen.style.display="block";
+  document.getElementById("welcomeText").textContent="بالتوفيق يا "+playerName+"!";
+
+  resetGame();
+  startTimer();
+  spawnViruses();
+}
+
+function resetGame(){
+  score=0; 
+  timeLeft = 60 - (level-1)*5;
+  if(timeLeft < 20) timeLeft = 20;
+  hud.textContent=`النقاط: ${score} | الوقت: ${timeLeft}`;
+  playArea.innerHTML="";
+}
+
+function startTimer(){
+  clearInterval(timerInterval);
+  timerInterval=setInterval(()=>{
+    timeLeft--;
+    hud.textContent=`النقاط: ${score} | الوقت: ${timeLeft}`;
+    if(timeLeft<=0) endGame();
+  },1000);
+}
+
+function spawnViruses(){
+  clearInterval(virusInterval);
+
+  let spawnRate = 1000 - (level-1)*150;
+  if(spawnRate < 300) spawnRate = 300;
+
+  virusInterval=setInterval(()=>{
+    createVirus(1500 - (level-1)*100);
+    if(Math.random()>0.5) createVirus(1200 - (level-1)*100);
+  }, spawnRate);
+}
+
+function createVirus(duration){
+  let virus=document.createElement("div");
+  virus.textContent="🦠";
+  virus.className="virus";
+  virus.style.top=Math.random()*250+"px";
+  virus.style.left=Math.random()*90+"%";
+  virus.onclick = () => {
+    score++;
+    if(score >= 50){
+      endGame();
+      return;
+    }
+    hud.textContent = `النقاط: ${score} | الوقت: ${timeLeft}`;
+    virus.remove();
+  };
+  playArea.appendChild(virus);
+  setTimeout(()=>{ if(virus.parentNode) virus.remove(); },duration);
+}
+
+function endGame(){
+  clearInterval(timerInterval);
+  clearInterval(virusInterval);
+  virusScreen.style.display="none";
+
+  endScreen.style.display="block";
+  document.getElementById("endMessage").textContent = "🎉 مبروك! فزت";
+}
+
+document.getElementById("restartBtn").addEventListener("click",()=>{
+  endScreen.style.display="none";
+  level = 1;
+  equippedItems=[];
+  equippedVisuals.innerHTML="";
+  dressScreen.style.display="block";
+  characterDisplay.textContent=character==="👨🏻‍⚕️"?"🧍🏻‍♂️":"🧍🏻";
+});
+</script>
+</body>
+</html>
